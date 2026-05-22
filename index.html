@@ -15,6 +15,7 @@
       font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
       overflow: hidden;
       position: relative;
+      cursor: pointer;
     }
     #app {
       text-align: center;
@@ -91,6 +92,23 @@
     .btn-retry:hover { background: #fa8c16; color: #fff; transform: scale(1.05); }
     .emoji { font-size: 4vw; margin-top: 20px; animation: fadeIn 0.5s 0.3s ease-out both; }
 
+    /* 音乐提示 */
+    #music-hint {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      padding: 10px 28px;
+      border-radius: 30px;
+      font-size: 1.1vw;
+      animation: fadeIn 1s 0.5s ease-out both;
+      z-index: 100;
+      pointer-events: none;
+    }
+    #music-hint.hidden { display: none; }
+
     /* 跑路时的小动画 */
     @keyframes dodge {
       0% { transform: scale(1); }
@@ -101,44 +119,62 @@
 </head>
 <body>
 
-  <!-- 「否」按钮，初始在按钮区域里，JS 会把它放到 body 里绝对定位 -->
+  <!-- BGM：浏览器需要用户交互才能播放 -->
+  <audio id="bgm" loop preload="auto">
+    <source src="https://raw.githubusercontent.com/weihao222/liujunxiong-dashafu/main/bgm.m4a" type="audio/mp4">
+  </audio>
+
+  <!-- 音乐提示 -->
+  <div id="music-hint">🎵 点击任意位置开启音乐</div>
+
   <div id="app">
     <div class="question" id="question">🤔 刘骏雄是不是大傻福？</div>
     <div class="buttons" id="buttons">
       <button class="btn btn-yes" id="btn-yes" onclick="choose(true)">是</button>
-      <!-- 「否」按钮由 JS 接管，初始放这里占位 -->
     </div>
     <div id="result-area"></div>
   </div>
 
-  <!-- 「否」按钮，由 JS 动态创建并放到 body 中 -->
   <script>
+    const bgm = document.getElementById('bgm');
+    const hint = document.getElementById('music-hint');
+    let musicStarted = false;
+
+    // 点击页面任意位置 → 开始播放 BGM
+    document.body.addEventListener('click', function startMusic() {
+      if (musicStarted) return;
+      musicStarted = true;
+      bgm.volume = 0.6;
+      bgm.play().then(() => {
+        hint.textContent = '🎵 音乐已开启';
+        setTimeout(() => hint.classList.add('hidden'), 2000);
+      }).catch(() => {
+        hint.textContent = '⚠️ 音乐播放失败，请检查浏览器设置';
+        setTimeout(() => hint.classList.add('hidden'), 3000);
+      });
+      // 只触发一次
+      document.body.removeEventListener('click', startMusic);
+    });
+
     const noBtn = document.createElement('button');
     noBtn.className = 'btn btn-no';
     noBtn.textContent = '否';
     noBtn.id = 'btn-no';
-
-    // 把「否」按钮移到 body 下，方便绝对定位
     document.body.appendChild(noBtn);
 
-    // 初始化「否」按钮位置（居中偏右）
     function resetNoBtnPosition() {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const bw = noBtn.offsetWidth || 120;
       const bh = noBtn.offsetHeight || 60;
-      // 初始放在中间偏右
       noBtn.style.left = (vw/2 + 80) + 'px';
       noBtn.style.top  = (vh/2 + 0) + 'px';
     }
 
-    // 页面加载完再定位
     window.addEventListener('load', resetNoBtnPosition);
     window.addEventListener('resize', resetNoBtnPosition);
 
-    // 鼠标靠近时跑路！
     noBtn.addEventListener('mouseenter', dodge);
-    // 触摸屏：触摸开始时也跑
     noBtn.addEventListener('touchstart', function(e) { e.preventDefault(); dodge(); });
 
     function dodge() {
@@ -146,38 +182,28 @@
       const vh = window.innerHeight;
       const bw = noBtn.offsetWidth;
       const bh = noBtn.offsetHeight;
-
-      // 计算安全范围（别跑出屏幕）
       const maxX = vw - bw - 20;
       const maxY = vh - bh - 20;
       const minX = 20;
       const minY = 20;
-
-      // 随机新位置
       const newX = Math.random() * (maxX - minX) + minX;
       const newY = Math.random() * (maxY - minY) + minY;
-
       noBtn.classList.add('dodging');
       noBtn.style.left = newX + 'px';
       noBtn.style.top  = newY + 'px';
-
-      // 跑掉时按钮会"抖一下"
       noBtn.style.animation = 'dodge 0.15s ease-out';
       setTimeout(() => { noBtn.style.animation = ''; }, 150);
     }
 
-    // 点击「否」几乎不可能，但万一被抓到了…
     noBtn.onclick = function() { choose(false); };
 
-    /* ===== 主逻辑 ===== */
     function choose(isYes) {
       const question = document.getElementById('question');
       const buttons  = document.getElementById('buttons');
       const area     = document.getElementById('result-area');
-
       question.style.display = 'none';
       buttons.style.display  = 'none';
-      noBtn.style.display    = 'none';   // 隐藏跑路按钮
+      noBtn.style.display    = 'none';
 
       if (isYes) {
         area.innerHTML = `
@@ -199,7 +225,7 @@
       document.getElementById('buttons').style.display  = '';
       document.getElementById('result-area').innerHTML = '';
       noBtn.style.display = '';
-      resetNoBtnPosition();   // 重置「否」按钮位置
+      resetNoBtnPosition();
     }
   </script>
 </body>
