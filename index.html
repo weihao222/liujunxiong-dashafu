@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>刘骏雄大傻福</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { margin:0; padding:0; box-sizing: border-box; }
     body {
       height: 100vh;
       display: flex;
@@ -15,36 +15,112 @@
       font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
       overflow: hidden;
     }
-    .text {
-      font-size: 6vw;
+    #app {
+      text-align: center;
+      animation: fadeIn 0.5s ease-out both;
+    }
+    @keyframes fadeIn {
+      0% { opacity:0; transform: translateY(20px); }
+      100% { opacity:1; transform: translateY(0); }
+    }
+    .question {
+      font-size: 3.5vw;
       font-weight: 900;
       color: #ff4d4f;
-      text-shadow: 4px 4px 0 #ffd666, 8px 8px 0 rgba(0,0,0,0.1);
-      animation: pop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+      text-shadow: 3px 3px 0 #ffd666;
+      margin-bottom: 40px;
       letter-spacing: 0.05em;
-      user-select: none;
     }
+    .buttons { display: flex; gap: 30px; justify-content: center; }
+    .btn {
+      padding: 18px 50px;
+      font-size: 2vw;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .btn-yes {
+      background: linear-gradient(135deg, #52c41a, #73d13d);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(82,196,26,0.4);
+    }
+    .btn-yes:hover { transform: scale(1.08); box-shadow: 0 8px 25px rgba(82,196,26,0.5); }
+    .btn-no {
+      background: linear-gradient(135deg, #ff4d4f, #ff7875);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(255,77,79,0.4);
+    }
+    .btn-no:hover { transform: scale(1.08); box-shadow: 0 8px 25px rgba(255,77,79,0.5); }
+    .result {
+      font-size: 5vw;
+      font-weight: 900;
+      animation: pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+    .result-yes { color: #52c41a; text-shadow: 3px 3px 0 #b7eb8f; }
+    .result-no  { color: #ff4d4f; text-shadow: 3px 3px 0 #ffd666; }
     @keyframes pop {
-      0% { transform: scale(0) rotate(-10deg); opacity: 0; }
+      0% { transform: scale(0) rotate(-5deg); opacity: 0; }
       100% { transform: scale(1) rotate(0deg); opacity: 1; }
     }
-    .sub {
-      margin-top: 24px;
-      font-size: 1.4vw;
+    .btn-retry {
+      margin-top: 40px;
+      padding: 14px 45px;
+      font-size: 1.5vw;
+      font-weight: 600;
+      border: 3px solid #fa8c16;
+      border-radius: 50px;
+      background: #fff;
       color: #fa8c16;
-      opacity: 0;
-      animation: fadeUp 0.6s 0.5s ease-out both;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
     }
-    @keyframes fadeUp {
-      0% { transform: translateY(20px); opacity: 0; }
-      100% { transform: translateY(0); opacity: 1; }
-    }
+    .btn-retry:hover { background: #fa8c16; color: #fff; transform: scale(1.05); }
+    .emoji { font-size: 4vw; margin-top: 20px; animation: fadeIn 0.5s 0.3s ease-out both; }
   </style>
 </head>
 <body>
-  <div style="text-align:center;">
-    <div class="text">刘骏雄大傻福</div>
-    <div class="sub">🌟 大傻福驾到，通通闪开 🌟</div>
+  <div id="app">
+    <div class="question" id="question">🤔 刘骏雄是不是大傻福？</div>
+    <div class="buttons" id="buttons">
+      <button class="btn btn-yes" onclick="choose(true)">是</button>
+      <button class="btn btn-no" onclick="choose(false)">否</button>
+    </div>
+    <div id="result-area"></div>
   </div>
+
+  <script>
+    function choose(isYes) {
+      const question = document.getElementById('question');
+      const buttons  = document.getElementById('buttons');
+      const area     = document.getElementById('result-area');
+
+      question.style.display = 'none';
+      buttons.style.display  = 'none';
+
+      if (isYes) {
+        area.innerHTML = `
+          <div class="result result-yes">✅ 真聪明！</div>
+          <div class="emoji">🧠💡👍</div>
+          <button class="btn-retry" onclick="reset()">🔄 再选一次</button>
+        `;
+      } else {
+        area.innerHTML = `
+          <div class="result result-no">❌ 你是大傻福！</div>
+          <div class="emoji">😂🤪😜</div>
+          <button class="btn-retry" onclick="reset()">🔄 再选一次</button>
+        `;
+      }
+    }
+
+    function reset() {
+      document.getElementById('question').style.display = '';
+      document.getElementById('buttons').style.display  = '';
+      document.getElementById('result-area').innerHTML    = '';
+    }
+  </script>
 </body>
 </html>
