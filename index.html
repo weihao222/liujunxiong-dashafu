@@ -49,20 +49,20 @@
     .btn-yes {
       background: linear-gradient(135deg, #52c41a, #73d13d);
       color: #fff;
-      box-shadow: 0 6px 20px rgba(82,196,26,0.4);
+      box-shadow:0 6px 20px rgba(82,196,26,0.4);
     }
-    .btn-yes:hover { transform: scale(1.08); box-shadow: 0 8px 25px rgba(82,196,26,0.5); }
+    .btn-yes:hover { transform: scale(1.08); box-shadow:0 8px 25px rgba(82,196,26,0.5); }
 
     /* 「否」按钮：绝对定位，可以自由跑路 */
     .btn-no {
       position: absolute;
       background: linear-gradient(135deg, #ff4d4f, #ff7875);
       color: #fff;
-      box-shadow: 0 6px 20px rgba(255,77,79,0.4);
+      box-shadow:0 6px 20px rgba(255,77,79,0.4);
       transition: left 0.25s ease-out, top 0.25s ease-out, transform 0.2s;
       z-index: 10;
     }
-    .btn-no:hover { transform: scale(1.08); box-shadow: 0 8px 25px rgba(255,77,79,0.5); }
+    .btn-no:hover { transform: scale(1.08); box-shadow:0 8px 25px rgba(255,77,79,0.5); }
     .btn-no.dodging { transition: left 0.15s ease-out, top 0.15s ease-out; }
 
     .result {
@@ -108,7 +108,7 @@
       pointer-events: none;
       transition: opacity 0.5s;
     }
-    #music-hint.hidden { opacity: 0; pointer-events: none; }
+    #music-hint.hidden { opacity: 0; }
 
     @keyframes dodge {
       0% { transform: scale(1); }
@@ -119,7 +119,7 @@
 </head>
 <body>
 
-  <div id="music-hint">🎵 点击任意位置开启音效</div>
+  <div id="music-hint">🎵 点击任意位置开启音乐</div>
 
   <div id="app">
     <div class="question" id="question">🤔 刘骏雄是不是大傻福？</div>
@@ -129,59 +129,37 @@
     <div id="result-area"></div>
   </div>
 
+  <!-- 音频元素，指向 GitHub Pages 上的音频文件 -->
+  <audio id="bgm" loop preload="auto">
+    <source src="bgm.m4a" type="audio/mp4">
+  </audio>
+
   <script>
-    // ===== 用 Web Audio API 生成背景音效（不依赖外部文件）=====
-    let audioCtx = null;
-    let musicStarted = false;
+    // ===== 播放用户提供的音频文件 =====
+    const bgm = document.getElementById('bgm');
     const hint = document.getElementById('music-hint');
-
-    // 生成简单的旋律音效
-    function playNote(freq, startTime, duration) {
-      if (!audioCtx) return;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.08, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(startTime);
-      osc.stop(startTime + duration);
-    }
-
-    function playBGM() {
-      if (!audioCtx) return;
-      // 简单循环旋律（C大调）
-      const notes = [523, 587, 659, 698, 783, 698, 659, 587]; // C D E F G F E D
-      const noteLen = 0.3;
-      const loopLen = notes.length * noteLen;
-
-      function scheduleLoop() {
-        const now = audioCtx.currentTime;
-        for (let i = 0; i < notes.length; i++) {
-          playNote(notes[i], now + i * noteLen, noteLen * 0.9);
-        }
-        // 循环
-        setTimeout(scheduleLoop, loopLen * 1000 - 100);
-      }
-      scheduleLoop();
-    }
+    let musicStarted = false;
 
     function startMusic() {
       if (musicStarted) return;
       musicStarted = true;
-      try {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        playBGM();
-        hint.textContent = '🎵 音效已开启';
+
+      bgm.play().then(() => {
+        hint.textContent = '🎵 音乐已开启';
         setTimeout(() => hint.classList.add('hidden'), 2000);
-      } catch (e) {
-        console.warn('音效启动失败:', e.message);
-        hint.textContent = '⚠️ 音效不可用';
-        setTimeout(() => hint.classList.add('hidden'), 2000);
-      }
+      }).catch((e) => {
+        console.warn('播放失败:', e.message);
+        hint.textContent = '⚠️ 点击页面任意位置播放音乐';
+        // 不隐藏提示，让用户再点一次
+        document.body.addEventListener('click', function retryPlay() {
+          bgm.play().then(() => {
+            hint.textContent = '🎵 音乐已开启';
+            setTimeout(() => hint.classList.add('hidden'), 2000);
+            document.body.removeEventListener('click', retryPlay);
+          }).catch(() => {});
+        }, { once: false });
+      });
+
       document.body.removeEventListener('click', startMusic);
     }
 
@@ -241,7 +219,7 @@
       if (isYes) {
         area.innerHTML = `
           <div class="result result-yes">✅ 真聪明！</div>
-          <div class="emoji">🧠💡👍</div>
+          <div class="emoji">🧐💡👍</div>
           <button class="btn-retry" onclick="reset()">🔄 再选一次</button>
         `;
       } else {
