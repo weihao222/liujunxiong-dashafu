@@ -98,7 +98,7 @@
       bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.55);
       color: #fff;
       padding: 10px 28px;
       border-radius: 30px;
@@ -106,10 +106,10 @@
       animation: fadeIn 1s 0.5s ease-out both;
       z-index: 100;
       pointer-events: none;
+      transition: opacity 0.5s;
     }
-    #music-hint.hidden { display: none; }
+    #music-hint.hidden { opacity: 0; pointer-events: none; }
 
-    /* 跑路时的小动画 */
     @keyframes dodge {
       0% { transform: scale(1); }
       50% { transform: scale(0.95); }
@@ -119,12 +119,6 @@
 </head>
 <body>
 
-  <!-- BGM：浏览器需要用户交互才能播放 -->
-  <audio id="bgm" loop preload="auto">
-    <source src="https://raw.githubusercontent.com/weihao222/liujunxiong-dashafu/main/bgm.m4a" type="audio/mp4">
-  </audio>
-
-  <!-- 音乐提示 -->
   <div id="music-hint">🎵 点击任意位置开启音乐</div>
 
   <div id="app">
@@ -136,26 +130,72 @@
   </div>
 
   <script>
-    const bgm = document.getElementById('bgm');
-    const hint = document.getElementById('music-hint');
+    // ===== 音频加载（通过 GitHub API，国内更稳）=====
+    let audioCtx = null;
+    let musicBuffer = null;
+    let musicSource = null;
     let musicStarted = false;
+    const hint = document.getElementById('music-hint');
 
-    // 点击页面任意位置 → 开始播放 BGM
-    document.body.addEventListener('click', function startMusic() {
-      if (musicStarted) return;
+    async function loadAudio() {
+      try {
+        const resp = await fetch(
+          'https://api.github.com/repos/weihao222/liujunxiong-dashafu/contents/bgm.m4a',
+          { headers: { 'Accept': 'application/vnd.github.v3+json' } }
+        );
+        if (!resp.ok) throw new Error('API fetch failed');
+        const data = await resp.json();
+        // GitHub API 返回 base64 编码的内容
+        const base64 = data.content.replace(/\n/g, '');
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+        // 解码音频
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        musicBuffer = await audioCtx.decodeAudioData(bytes.buffer);
+        console.log('🎵 音频加载成功！');
+        hint.textContent = '🎵 点击任意位置播放音乐';
+      } catch (e) {
+        console.warn('音频加载失败（不影响页面功能）:', e.message);
+        hint.textContent = '🎵 音乐加载失败，不影响使用';
+        setTimeout(() => hint.classList.add('hidden'), 3000);
+      }
+    }
+
+    // 页面加载时预加载音频
+    loadAudio();
+
+    function playMusic() {
+      if (!musicBuffer || musicStarted) return;
       musicStarted = true;
-      bgm.volume = 0.6;
-      bgm.play().then(() => {
+      try {
+        musicSource = audioCtx.createBufferSource();
+        musicSource.buffer = musicBuffer;
+        musicSource.loop = true;
+        musicSource.connect(audioCtx.destination);
+        musicSource.start(0);
         hint.textContent = '🎵 音乐已开启';
         setTimeout(() => hint.classList.add('hidden'), 2000);
-      }).catch(() => {
-        hint.textContent = '⚠️ 音乐播放失败，请检查浏览器设置';
-        setTimeout(() => hint.classList.add('hidden'), 3000);
-      });
+      } catch (e) {
+        console.warn('播放失败:', e.message);
+      }
+    }
+
+    // 点击页面任意位置 → 播放音乐
+    document.body.addEventListener('click', function startMusic() {
+      if (musicBuffer && !musicStarted) {
+        // 需要先 resume AudioContext（浏览器策略）
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        playMusic();
+      }
       // 只触发一次
       document.body.removeEventListener('click', startMusic);
     });
 
+    // ===== 「否」躲猫猫按钮 =====
     const noBtn = document.createElement('button');
     noBtn.className = 'btn btn-no';
     noBtn.textContent = '否';
@@ -197,6 +237,7 @@
 
     noBtn.onclick = function() { choose(false); };
 
+    // ===== 主逻辑 =====
     function choose(isYes) {
       const question = document.getElementById('question');
       const buttons  = document.getElementById('buttons');
@@ -208,7 +249,7 @@
       if (isYes) {
         area.innerHTML = `
           <div class="result result-yes">✅ 真聪明！</div>
-          <div class="emoji">🧠💡👍</div>
+          <div class="emoji">🧐💡👍</div>
           <button class="btn-retry" onclick="reset()">🔄 再选一次</button>
         `;
       } else {
