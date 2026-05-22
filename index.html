@@ -14,10 +14,13 @@
       background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
       font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
       overflow: hidden;
+      position: relative;
     }
     #app {
       text-align: center;
       animation: fadeIn 0.5s ease-out both;
+      position: relative;
+      z-index: 1;
     }
     @keyframes fadeIn {
       0% { opacity:0; transform: translateY(20px); }
@@ -48,12 +51,19 @@
       box-shadow: 0 6px 20px rgba(82,196,26,0.4);
     }
     .btn-yes:hover { transform: scale(1.08); box-shadow: 0 8px 25px rgba(82,196,26,0.5); }
+
+    /* 「否」按钮：绝对定位，可以自由跑路 */
     .btn-no {
+      position: absolute;
       background: linear-gradient(135deg, #ff4d4f, #ff7875);
       color: #fff;
       box-shadow: 0 6px 20px rgba(255,77,79,0.4);
+      transition: left 0.25s ease-out, top 0.25s ease-out, transform 0.2s;
+      z-index: 10;
     }
     .btn-no:hover { transform: scale(1.08); box-shadow: 0 8px 25px rgba(255,77,79,0.5); }
+    .btn-no.dodging { transition: left 0.15s ease-out, top 0.15s ease-out; }
+
     .result {
       font-size: 5vw;
       font-weight: 900;
@@ -80,19 +90,86 @@
     }
     .btn-retry:hover { background: #fa8c16; color: #fff; transform: scale(1.05); }
     .emoji { font-size: 4vw; margin-top: 20px; animation: fadeIn 0.5s 0.3s ease-out both; }
+
+    /* 跑路时的小动画 */
+    @keyframes dodge {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
   </style>
 </head>
 <body>
+
+  <!-- 「否」按钮，初始在按钮区域里，JS 会把它放到 body 里绝对定位 -->
   <div id="app">
     <div class="question" id="question">🤔 刘骏雄是不是大傻福？</div>
     <div class="buttons" id="buttons">
-      <button class="btn btn-yes" onclick="choose(true)">是</button>
-      <button class="btn btn-no" onclick="choose(false)">否</button>
+      <button class="btn btn-yes" id="btn-yes" onclick="choose(true)">是</button>
+      <!-- 「否」按钮由 JS 接管，初始放这里占位 -->
     </div>
     <div id="result-area"></div>
   </div>
 
+  <!-- 「否」按钮，由 JS 动态创建并放到 body 中 -->
   <script>
+    const noBtn = document.createElement('button');
+    noBtn.className = 'btn btn-no';
+    noBtn.textContent = '否';
+    noBtn.id = 'btn-no';
+
+    // 把「否」按钮移到 body 下，方便绝对定位
+    document.body.appendChild(noBtn);
+
+    // 初始化「否」按钮位置（居中偏右）
+    function resetNoBtnPosition() {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const bw = noBtn.offsetWidth || 120;
+      const bh = noBtn.offsetHeight || 60;
+      // 初始放在中间偏右
+      noBtn.style.left = (vw/2 + 80) + 'px';
+      noBtn.style.top  = (vh/2 + 0) + 'px';
+    }
+
+    // 页面加载完再定位
+    window.addEventListener('load', resetNoBtnPosition);
+    window.addEventListener('resize', resetNoBtnPosition);
+
+    // 鼠标靠近时跑路！
+    noBtn.addEventListener('mouseenter', dodge);
+    // 触摸屏：触摸开始时也跑
+    noBtn.addEventListener('touchstart', function(e) { e.preventDefault(); dodge(); });
+
+    function dodge() {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const bw = noBtn.offsetWidth;
+      const bh = noBtn.offsetHeight;
+
+      // 计算安全范围（别跑出屏幕）
+      const maxX = vw - bw - 20;
+      const maxY = vh - bh - 20;
+      const minX = 20;
+      const minY = 20;
+
+      // 随机新位置
+      const newX = Math.random() * (maxX - minX) + minX;
+      const newY = Math.random() * (maxY - minY) + minY;
+
+      noBtn.classList.add('dodging');
+      noBtn.style.left = newX + 'px';
+      noBtn.style.top  = newY + 'px';
+
+      // 跑掉时按钮会"抖一下"
+      noBtn.style.animation = 'dodge 0.15s ease-out';
+      setTimeout(() => { noBtn.style.animation = ''; }, 150);
+    }
+
+    // 点击「否」几乎不可能，但万一被抓到了…
+    noBtn.onclick = function() { choose(false); };
+
+    /* ===== 主逻辑 ===== */
     function choose(isYes) {
       const question = document.getElementById('question');
       const buttons  = document.getElementById('buttons');
@@ -100,6 +177,7 @@
 
       question.style.display = 'none';
       buttons.style.display  = 'none';
+      noBtn.style.display    = 'none';   // 隐藏跑路按钮
 
       if (isYes) {
         area.innerHTML = `
@@ -119,7 +197,9 @@
     function reset() {
       document.getElementById('question').style.display = '';
       document.getElementById('buttons').style.display  = '';
-      document.getElementById('result-area').innerHTML    = '';
+      document.getElementById('result-area').innerHTML = '';
+      noBtn.style.display = '';
+      resetNoBtnPosition();   // 重置「否」按钮位置
     }
   </script>
 </body>
