@@ -49,20 +49,19 @@
     .btn-yes {
       background: linear-gradient(135deg, #52c41a, #73d13d);
       color: #fff;
-      box-shadow:0 6px 20px rgba(82,196,26,0.4);
+      box-shadow: 0 6px 20px rgba(82,196,26,0.4);
     }
-    .btn-yes:hover { transform: scale(1.08); box-shadow:0 8px 25px rgba(82,196,26,0.5); }
+    .btn-yes:hover { transform: scale(1.08); box-shadow: 0 8px 25px rgba(82,196,26,0.5); }
 
-    /* 「否」按钮：绝对定位，可以自由跑路 */
     .btn-no {
       position: absolute;
       background: linear-gradient(135deg, #ff4d4f, #ff7875);
       color: #fff;
-      box-shadow:0 6px 20px rgba(255,77,79,0.4);
+      box-shadow: 0 6px 20px rgba(255,77,79,0.4);
       transition: left 0.25s ease-out, top 0.25s ease-out, transform 0.2s;
       z-index: 10;
     }
-    .btn-no:hover { transform: scale(1.08); box-shadow:0 8px 25px rgba(255,77,79,0.5); }
+    .btn-no:hover { transform: scale(1.08); box-shadow: 0 8px 25px rgba(255,77,79,0.5); }
     .btn-no.dodging { transition: left 0.15s ease-out, top 0.15s ease-out; }
 
     .result {
@@ -92,7 +91,6 @@
     .btn-retry:hover { background: #fa8c16; color: #fff; transform: scale(1.05); }
     .emoji { font-size: 4vw; margin-top: 20px; animation: fadeIn 0.5s 0.3s ease-out both; }
 
-    /* 音乐提示 */
     #music-hint {
       position: fixed;
       bottom: 30px;
@@ -129,20 +127,55 @@
     <div id="result-area"></div>
   </div>
 
-  <!-- 音频：通过 jsDelivr CDN 加载，国内可访问 -->
-  <audio id="bgm" loop preload="auto">
-    <source src="https://cdn.jsdelivr.net/gh/weihao222/liujunxiong-dashafu@main/bgm.m4a" type="audio/mp4">
-  </audio>
+  <!-- 音频将通过 JS 从 base64 解码后通过 Blob URL 播放 -->
+  <audio id="bgm" loop preload="auto"></audio>
+
+  <!-- 加载 base64 音频数据 -->
+  <script src="audio_b64.js"></script>
 
   <script>
-    // ===== 播放用户提供的音频文件 =====
     const bgm = document.getElementById('bgm');
     const hint = document.getElementById('music-hint');
     let musicStarted = false;
 
+    // 从 window.AUDIO_B64 解码音频并创建 Blob URL
+    function loadAudioFromBase64() {
+      if (!window.AUDIO_B64) {
+        console.warn('音频 base64 数据未找到');
+        return false;
+      }
+      try {
+        const binaryStr = atob(window.AUDIO_B64);
+        const len = binaryStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'audio/mp4' });
+        const url = URL.createObjectURL(blob);
+        bgm.src = url;
+        console.log('音频加载成功，Blob URL:', url);
+        return true;
+      } catch (e) {
+        console.error('音频解码失败:', e);
+        return false;
+      }
+    }
+
     function startMusic() {
       if (musicStarted) return;
       musicStarted = true;
+
+      // 如果没有加载音频，先加载
+      if (!bgm.src || bgm.src === window.location.href) {
+        const success = loadAudioFromBase64();
+        if (!success) {
+          hint.textContent = '⚠️ 音频加载失败';
+          setTimeout(() => hint.classList.add('hidden'), 3000);
+          document.body.removeEventListener('click', startMusic);
+          return;
+        }
+      }
 
       bgm.play().then(() => {
         hint.textContent = '🎵 音乐已开启';
@@ -150,14 +183,16 @@
       }).catch((e) => {
         console.warn('播放失败:', e.message);
         hint.textContent = '⚠️ 点击页面任意位置播放音乐';
-        // 不隐藏提示，让用户再点一次
-        document.body.addEventListener('click', function retryPlay() {
+        // 允许再次点击
+        musicStarted = false;
+        const retry = () => {
           bgm.play().then(() => {
             hint.textContent = '🎵 音乐已开启';
             setTimeout(() => hint.classList.add('hidden'), 2000);
-            document.body.removeEventListener('click', retryPlay);
+            document.body.removeEventListener('click', retry);
           }).catch(() => {});
-        }, { once: false });
+        };
+        document.body.addEventListener('click', retry, { once: true });
       });
 
       document.body.removeEventListener('click', startMusic);
