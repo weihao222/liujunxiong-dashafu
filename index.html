@@ -90,9 +90,34 @@
     }
     .btn-retry:hover { background: #fa8c16; color: #fff; transform: scale(1.05); }
     .emoji { font-size: 4vw; margin-top: 20px; animation: fadeIn 0.5s 0.3s ease-out both; }
+
+    #music-hint {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      padding: 10px 28px;
+      border-radius: 30px;
+      font-size: 1.1vw;
+      animation: fadeIn 1s 0.5s ease-out both;
+      z-index: 100;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+    #music-hint.hidden { opacity: 0; }
+
+    @keyframes dodge {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
   </style>
 </head>
 <body>
+
+  <div id="music-hint">🎵 点击任意位置开启音乐</div>
 
   <div id="app">
     <div class="question" id="question">🤔 刘骏雄是不是大傻福？</div>
@@ -102,7 +127,33 @@
     <div id="result-area"></div>
   </div>
 
+  <!-- 音频文件（与 index.html 同目录） -->
+  <audio id="bgm" loop preload="auto">
+    <source src="bgm.mp3" type="audio/mpeg">
+  </audio>
+
   <script>
+    // ===== 播放音频 =====
+    const bgm = document.getElementById('bgm');
+    const hint = document.getElementById('music-hint');
+    let musicStarted = false;
+
+    function startMusic() {
+      if (musicStarted) return;
+      musicStarted = true;
+      bgm.play().then(() => {
+        hint.textContent = '🎵 音乐已开启';
+        setTimeout(() => hint.classList.add('hidden'), 2000);
+      }).catch((e) => {
+        console.warn('播放失败:', e.message);
+        // 失败后允许再次点击
+        musicStarted = false;
+      });
+      document.body.removeEventListener('click', startMusic);
+    }
+
+    document.body.addEventListener('click', startMusic);
+
     // ===== 「否」躲猫猫按钮 =====
     const noBtn = document.createElement('button');
     noBtn.className = 'btn btn-no';
